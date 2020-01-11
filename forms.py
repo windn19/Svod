@@ -50,13 +50,6 @@ def create_report(opl, pos):
     sheet = book.sheet_by_index(0)
     row = sheet.row_values(0)
     opl_row = ['№\nп/п', 'Поставщик', 'Договор №', 'Договор дата', 'Документ', '', '']
-    pos_row = ['Наименование товаров, работ, услуг',
-               'Инициатор',
-               'Номер договора',
-               'Дата',
-               'Поставщик',
-               'Статус договора',
-               'Сумма договора']
     if row == opl_row:
         for i in range(2, sheet.nrows):
             s = sheet.cell_value(i, 5)
@@ -102,7 +95,8 @@ def create_report(opl, pos):
                         cursor.execute(f'''
             
                                            insert into Pos (Nom_pact, Date_pact, Supplier, Sum)
-                                           values({int(sheet.cell_value(i, 2))}, {s}, '{sheet.cell_value(i, 4)}', {float(data)})
+                                           values({int(sheet.cell_value(i, 2))}, {s}, '{sheet.cell_value(i, 4)}',
+                                                {float(data)})
             
                                            ''')
                     else:
@@ -120,7 +114,7 @@ def create_report(opl, pos):
         work = openpyxl.Workbook()
         sheet = work.active
         sheet.title = 'Отчет'
-        text = ['План', '№ договра', 'Дата', 'Поставщик', 'Сумма договора без НДС/с НДС(13%)']
+        text = ['План', '№ договора', 'Дата', 'Поставщик', 'Сумма договора без НДС/с НДС(13%)']
         for i in range(5):
             sheet.merge_cells(start_row=1, start_column=i + 1, end_column=i + 1, end_row=2)
             sheet.cell(1, i + 1).value = text[i]
@@ -134,21 +128,37 @@ def create_report(opl, pos):
             sheet.cell(2, i).value = text[i - 6]
             sheet.cell(2, i).alignment = Alignment(horizontal='center')
         i = 3
-
-        cursor.execute('''
-        select o.Nom_pact, o.Sum, o.Date_pact, o.Nomer, p.Date_pact, p.Supplier, p.Sum
-        from opl o
-        left join pos p on o.Nom_pact = p.Nom_pact
-        ''')
-        for row in cursor.fetchall():
-            nom_pact, sum_paper, date_paper, nom_paper, date_pact, supplier, sum_pact = row
-            sheet.cell(i, 2).value = nom_pact
-            sheet.cell(i, 3).value = f'{date_paper.day}.{date_paper.month}.{date_paper.year}'
-            sheet.cell(i, 4).value = supplier
-            sheet.cell(i, 5).value = f'{round(float(sum_pact), 2)} / {round(float(sum_pact) + float(sum_pact)*.13, 2)}'
-            sheet.cell(i, date_paper.month + 5).value = sheet.cell(i, date_paper.month + 5).value + sum_paper\
-                if sheet.cell(i, date_paper.month + 5).value else sum_paper
-            sheet.cell(i, date_paper.month + 5).number_format = '0.00 ₽'
+        cursor.execute('select Nom_pact from pos')
+        numbers = cursor.fetchall()
+        for now in numbers:
+            cursor.execute(f'''
+            select o.Nom_pact, p.Date_pact, p.Supplier, p.Sum
+            from opl o
+            left join pos p on o.Nom_pact = p.Nom_pact
+            where p.Nom_pact={now[0]}
+            ''')
+            rows = cursor.fetchall()
+            if rows:
+                nom_pact, date_pact, supplier, sum_pact = rows[0]
+                sheet.cell(i, 2).value = nom_pact
+                sheet.cell(i, 3).value = f'{date_pact.day}.{date_pact.month}.{date_pact.year}'
+                sheet.cell(i, 4).value = supplier
+                sheet.cell(i, 5).value = f'{round(float(sum_pact), 2)} / {round(float(sum_pact) + float(sum_pact)*.13, 2)}'
+                cursor.execute(f'select Date_pact, Sum from opl where Nom_pact={nom_pact}')
+                opls = cursor.fetchall()
+                for opl_item in opls:
+                    date_paper, sum_paper = opl_item
+                    sheet.cell(i, date_paper.month + 5).value = sheet.cell(i, date_paper.month + 5).value + sum_paper\
+                        if sheet.cell(i, date_paper.month + 5).value else sum_paper
+                    sheet.cell(i, date_paper.month + 5).number_format = '0.00 ₽'
+            else:
+                cursor.execute(f'select Nom_pact, Date_pact, Supplier, Sum from pos where Nom_pact={now[0]}')
+                post = cursor.fetchall()
+                nom_pact, date_pact, supplier, sum_pact = post[0]
+                sheet.cell(i, 2).value = nom_pact
+                sheet.cell(i, 3).value = f'{date_pact.day}.{date_pact.month}.{date_pact.year}'
+                sheet.cell(i, 4).value = supplier
+                sheet.cell(i, 5).value = f'{round(float(sum_pact), 2)} / {round(float(sum_pact) + float(sum_pact) * .13, 2)}'
             i += 1
 
         work.save('Report.xlsx')
