@@ -1,31 +1,30 @@
 import pyodbc
-from datetime import datetime
-from os.path import split
 from os import getcwd
+from pprint import pprint
 
-
-conn = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=D:\python\Svod\Report.accdb;')
+cur_path = getcwd()
+conn = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%s\Report.accdb;' % (cur_path))
 cursor = conn.cursor()
-# s1 = 43598.0 print(split(opl_file)[1].endswith('xlsx'))
-# s2 = 43591.0
-# s3 = 'куцй'
-s = [515, 520, 513, 525]
-# print(s3)
-# # print(f'''
-# #                      INSERT INTO table3 (First_Name, Last_Name, Age)
-# #                      VALUES("{s1}", '{s2}', {s3})
-# # 513, 43591.0, куцй, 605681.55
-# #                   ''')
-# cursor.execute(f'''INSERT INTO Pos (Nom_pact, Date_pact, Supplier, Sum)
-#                    VALUES (513, {s2}, '{s3}',  605681.55)
-#                   ''')
-#
-#
-#
-# conn.commit()
-for i in s:
-    row = cursor.execute(f'select 1 from pos where Nom_pact={i}')
-    print(cursor.fetchall())
-    print(list(row))
-#if (515) in cursor.fetchall():
-#print('yes')
+cursor.execute('select Nom_pact from pos')
+numbers = cursor.fetchall()
+print(numbers)
+for now in numbers:
+    cursor.execute(f'''
+           select o.Nom_pact, o.Nomer, p.Date_pact, p.Supplier, p.Sum
+           from opl o
+           left join pos p on o.Nom_pact = p.Nom_pact
+           where p.Nom_pact={now[0]}
+           ''')
+    rows = cursor.fetchall()
+    pprint(rows)
+    if rows:
+        nom_pact, nom_paper, date_pact, supplier, sum_pact = rows[0]
+        cursor.execute(f'select Date_pact, Sum from opl where Nom_pact={nom_pact}')
+        opls = cursor.fetchall()
+        for opl_item in opls:
+            print(nom_pact, opl_item)
+    else:
+        cursor.execute(f'select Nom_pact, Date_pact, Supplier, Sum from pos where Nom_pact={now[0]}')
+        post = cursor.fetchall()
+        print(post)
+
