@@ -3,13 +3,13 @@ The program implements reading data from two tables with suppliers and their pay
 ## Installation
 The program is written in Python 3.7 and it is expected that it is already installed
 In case of conflict with Python2, use pip3. Install the necessary modules:
-
+```
   pip install -r requirements.txt
-
+```
 The program also uses tkinter, but since it comes preinstalled in most shipments, it is not specified. If it is not installed:
-
+```
   pip install python3-tkinter
-
+```
 ## Using
 The main file is forms.py. For its regular work, it is necessary to have a database file (Report.accdb) in the same directory. The output Report.xlsx file is generated in the same directory.
 
